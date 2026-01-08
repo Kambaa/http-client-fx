@@ -51,7 +51,12 @@ public class HelloController {
   private TextArea requestHeaderTextarea;
 
   @FXML
+  private Label responseCodeLabel;
+  @FXML
   private TextArea responseHeaderTextarea;
+
+  @FXML
+  private TextArea responseBodyTextarea;
 
   @FXML
   private void initialize() {
@@ -96,24 +101,31 @@ public class HelloController {
   }
 
   @FXML
-  protected void onSendButtonClick()
-      throws NoSuchAlgorithmException, KeyManagementException, URISyntaxException, IOException,
-      InterruptedException {
+  protected void onSendButtonClick() {
     sendButton.setDisable(true);
-    HttpClient httpClient = prepareHttpClient();
-    System.out.println("Selected HTTP Method: " + httpMethod.getValue());
-    System.out.println("Given URL: " + url.getText());
-    // welcomeText.setText("Welcome to JavaFX Application!");
-    HttpRequest.Builder requestBuilder = HttpRequest.newBuilder();
-    requestBuilder.uri(new URI(url.getText()));
-    requestBuilder.method(httpMethod.getValue(), HttpRequest.BodyPublishers.noBody());
-    HttpRequest request = requestBuilder.build();
-    HttpResponse<String> response =
-        httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-    StringBuilder sb = new StringBuilder();
-    response.headers().map().forEach((n, v) -> sb.append(n + ": " + String.join("", v) + "\n"));
-    responseHeaderTextarea.setText(sb.toString());
-    sendButton.setDisable(false);
+    try {
+      HttpClient httpClient = prepareHttpClient();
+      System.out.println("Selected HTTP Method: " + httpMethod.getValue());
+      System.out.println("Given URL: " + url.getText());
+      // welcomeText.setText("Welcome to JavaFX Application!");
+      HttpRequest.Builder requestBuilder = HttpRequest.newBuilder();
+      requestBuilder.uri(new URI(url.getText()));
+      requestBuilder.method(httpMethod.getValue(), HttpRequest.BodyPublishers.noBody());
+      HttpRequest request = requestBuilder.build();
+      HttpResponse<String> response =
+          httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+      StringBuilder sb = new StringBuilder();
+      response.headers().map().forEach((n, v) -> sb.append(n + ": " + String.join("", v) + "\n"));
+      responseHeaderTextarea.setText(sb.toString());
+      responseCodeLabel.setText(String.valueOf(response.statusCode()));
+      responseBodyTextarea.setText(response.body());
+      System.out.println(response.statusCode());
+      System.out.println(response.body());
+    } catch (Exception ex) {
+      System.out.println(ex.getMessage());
+    } finally {
+      sendButton.setDisable(false);
+    }
   }
 
 }
