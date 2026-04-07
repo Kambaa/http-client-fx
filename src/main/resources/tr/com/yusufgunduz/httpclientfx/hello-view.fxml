@@ -16,7 +16,12 @@
     <children>
       <Group layoutX="9.0" layoutY="14.0">
          <children>
-              <Button fx:id="sendButton" layoutX="702.0" mnemonicParsing="false" onAction="#onSendButtonClick" prefHeight="47.0" prefWidth="85.0" text="SEND" wrapText="true" />
+            <Group layoutX="702.0">
+               <children>
+                    <Button fx:id="sendButton" mnemonicParsing="false" onAction="#onSendButtonClick" prefHeight="47.0" prefWidth="85.0" text="SEND" wrapText="true" />
+                  <Button fx:id="cancelButton" mnemonicParsing="false" onAction="#onCancelButtonClick" prefHeight="47.0" prefWidth="85.0" text="CANCEL" visible="false" wrapText="true" />
+               </children>
+            </Group>
               <ComboBox fx:id="httpMethod" layoutY="2.0" prefHeight="39.0" prefWidth="130.0" promptText="HTTP METHOD">
                   <items>
                       <FXCollections fx:factory="observableArrayList">
@@ -28,7 +33,7 @@
                       </FXCollections>
                   </items>
               </ComboBox>
-              <TextField fx:id="url" layoutX="141.0" layoutY="4.0" prefHeight="38.0" prefWidth="550.0" />
+              <TextField fx:id="url" layoutX="141.0" layoutY="4.0" prefHeight="38.0" prefWidth="550.0" text="http://www.epias.com.tr" />
          </children>
       </Group>
       <Group layoutX="14.0" layoutY="70.0">

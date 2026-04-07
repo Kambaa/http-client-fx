@@ -22,13 +22,14 @@ headers and body and shows it to the user.
 
 ## Build/Run Commands
 
-Project has maven wrapper, prefer that.
+Project has maven wrapper, prefer that. SceneBuilder is located at C:\Users\YGPC\AppData\Local\SceneBuilder\SceneBuilder.exe, you can open the fxml file via that(For example `C:\Users\YGPC\AppData\Local\SceneBuilder\SceneBuilder.exe C:\Users\YGPC\IdeaProjects\http-client-fx\src\main\resources\tr\com\yusufgunduz\httpclientfx/hello-view.fxml`).
 
 ### Maven
 
 - `mvnw clean`: Clean build artifacts
 - `mvnw compile`: Compile source code
 - `mvnw javafx:run`: Run javafx application
+- 
 
 ### Naming Conventions
 
