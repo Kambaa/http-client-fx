@@ -92,15 +92,20 @@ public class HelloController {
   private HttpClient prepareHttpClient() throws KeyManagementException, NoSuchAlgorithmException {
     var builder = HttpClient.newBuilder();
 
-    if (sslCheckBox.isSelected()) {
+    if (!sslCheckBox.isSelected()) {
       TrustManager[] trustAll = new TrustManager[] {
           new X509TrustManager() {
+            @Override
             public void checkClientTrusted(X509Certificate[] c, String a) {
+              // user selected no ssl verificiation. skipped
             }
 
+            @Override
             public void checkServerTrusted(X509Certificate[] c, String a) {
+              // user selected no ssl verificiation. skipped
             }
 
+            @Override
             public X509Certificate[] getAcceptedIssuers() {
               return new X509Certificate[0];
             }
