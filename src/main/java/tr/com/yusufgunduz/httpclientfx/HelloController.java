@@ -10,10 +10,8 @@ import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
-import java.util.concurrent.FutureTask;
-import java.util.concurrent.TimeUnit;
-import javafx.application.Platform;
 import javafx.concurrent.Task;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
@@ -25,7 +23,6 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.KeyCombination;
 import javafx.scene.layout.AnchorPane;
-import javafx.util.Pair;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLParameters;
 import javax.net.ssl.TrustManager;
@@ -64,8 +61,6 @@ public class HelloController {
   @FXML
   private TextArea responseBodyTextarea;
 
-  private FutureTask task;
-
   @FXML
   private void initialize() {
     httpMethod.getSelectionModel().selectFirst();
@@ -75,6 +70,22 @@ public class HelloController {
       }
       var ctrlW = new KeyCodeCombination(KeyCode.W, KeyCombination.CONTROL_DOWN);
       newScene.getAccelerators().put(ctrlW, Platform::exit);
+    });
+
+    // httpMethod->url tab change
+    httpMethod.setOnKeyPressed(event -> {
+      if (event.getCode() == KeyCode.TAB) {
+        url.requestFocus();
+        event.consume();
+      }
+    });
+
+    // url->sendButton tab change
+    url.setOnKeyPressed(event -> {
+      if (event.getCode() == KeyCode.TAB) {
+        sendButton.requestFocus();
+        event.consume();
+      }
     });
   }
 
@@ -110,6 +121,12 @@ public class HelloController {
 
   private boolean isCancellable = true;
 
+  private record ResponseData(int statusCode, String headers, String body) {
+  }
+
+  private Task<ResponseData> task;
+  private Thread workerThread;
+
   @FXML
   protected void onSendButtonClick() {
 
@@ -118,99 +135,95 @@ public class HelloController {
 
     task = new Task<>() {
       @Override
-      protected Void call() throws Exception {
-        System.out.println("Task called");
-        for (int i = 0; i < 6; i++) {
-          if (isCancelled()) {
-            return null;
-          }
-
-          try {
-            Thread.sleep(TimeUnit.SECONDS.toMillis(1));
-          } catch (InterruptedException e) {
-            if (isCancelled()) {
-              System.out.println("Task Cancelled(in call method)");
-              return null;
-            }
-            System.out.println("Task interrupted");
-            Thread.currentThread().interrupt();
-            throw e;
-          }
+      protected ResponseData call() throws Exception {
+        if (isCancelled()) {
+          return null;
         }
-        System.out.println("Task done");
-        return null;
+        return sendRequest();
       }
 
       @Override
       protected void succeeded() {
-        System.out.println("Task succeeded");
-
         super.succeeded();
+
+        ResponseData data = getValue();
+        if (data != null) {
+          responseHeaderTextarea.setText(data.headers());
+          responseCodeLabel.setText(String.valueOf(data.statusCode()));
+          responseBodyTextarea.setText(data.body());
+        }
+
         sendButton.setVisible(true);
         cancelButton.setVisible(false);
       }
 
       @Override
       protected void cancelled() {
-        System.out.println("Task cancelled(inside cancelled method)");
-
         super.cancelled();
         sendButton.setVisible(true);
         cancelButton.setVisible(false);
+        System.out.println("Task cancelled");
       }
 
       @Override
       protected void failed() {
-        System.out.println("Task failed");
-
         super.failed();
         sendButton.setVisible(true);
         cancelButton.setVisible(false);
+
         Throwable ex = getException();
         if (ex != null) {
-          System.out.println(" failed exception is:");
           ex.printStackTrace();
         }
       }
     };
 
-    Thread thread = new Thread(task);
-    thread.setDaemon(true);
-    thread.start();
-
-    // try {
-    //   HttpClient httpClient = prepareHttpClient();
-    //   System.out.println("Selected HTTP Method: " + httpMethod.getValue());
-    //   System.out.println("Given URL: " + url.getText());
-    //   // welcomeText.setText("Welcome to JavaFX Application!");
-    //   HttpRequest.Builder requestBuilder = HttpRequest.newBuilder();
-    //   requestBuilder.uri(new URI(url.getText()));
-    //   requestBuilder.method(httpMethod.getValue(), HttpRequest.BodyPublishers.noBody());
-    //   HttpRequest request = requestBuilder.build();
-    //   HttpResponse<String> response =
-    //       httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-    //   StringBuilder sb = new StringBuilder();
-    //   response.headers().map().forEach((n, v) -> sb.append(n + ": " + String.join("", v) + "\n"));
-    //   responseHeaderTextarea.setText(sb.toString());
-    //   responseCodeLabel.setText(String.valueOf(response.statusCode()));
-    //   responseBodyTextarea.setText(response.body());
-    //   System.out.println(response.statusCode());
-    //   System.out.println(response.body());
-    // } catch (Exception ex) {
-    //   System.out.println(ex.getMessage());
-    // } finally {
-    //   // cancelButton.setVisible(false);
-    //
-    //   // sendButton.setVisible(true);
-    // }
+    workerThread = new Thread(task, "http-request-thread");
+    workerThread.setDaemon(true);
+    workerThread.start();
   }
 
   @FXML
   protected void onCancelButtonClick() {
-    if (task != null ) {
+    if (task != null && task.isRunning()) {
       task.cancel(true);
-      System.out.println("Task cancelled (onCancelButtonClick) end");
     }
+    if (workerThread != null) {
+      workerThread.interrupt();
+    }
+  }
+
+  private ResponseData sendRequest()
+      throws IOException, InterruptedException, NoSuchAlgorithmException,
+      KeyManagementException, URISyntaxException {
+
+    HttpClient httpClient = prepareHttpClient();
+
+    HttpRequest request = HttpRequest.newBuilder()
+        .uri(new URI(url.getText()))
+        .timeout(java.time.Duration.ofSeconds(30))
+        .method(httpMethod.getValue(), HttpRequest.BodyPublishers.noBody())
+        .build();
+
+    HttpResponse<String> response =
+        httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+    if (Thread.currentThread().isInterrupted()) {
+      throw new InterruptedException("Request thread interrupted");
+    }
+
+    StringBuilder sb = new StringBuilder();
+    response.headers().map()
+        .forEach((n, v) -> sb.append(n)
+            .append(": ")
+            .append(String.join("", v))
+            .append("\n"));
+
+    return new ResponseData(
+        response.statusCode(),
+        sb.toString(),
+        response.body()
+    );
   }
 
 }
