@@ -114,8 +114,8 @@ public class HelloController {
       builder.sslParameters(sslParameters);
     }
 
-    builder.followRedirects(followRedirectCheckBox.isSelected() ? HttpClient.Redirect.NEVER
-        : HttpClient.Redirect.ALWAYS);
+    builder.followRedirects(followRedirectCheckBox.isSelected() ? HttpClient.Redirect.ALWAYS
+        : HttpClient.Redirect.NEVER);
     return builder.build();
   }
 
